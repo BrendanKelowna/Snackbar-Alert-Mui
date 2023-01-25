@@ -1,0 +1,4 @@
+
+> snackbar-alert@0.0.0 lint C:\Users\bk_j8\Documents\websites\business_management\packages\snackbar-alert
+> eslint "**/*.ts*" --fix
+
