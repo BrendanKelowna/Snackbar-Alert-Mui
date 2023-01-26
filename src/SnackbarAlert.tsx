@@ -17,10 +17,10 @@ import { SnackbarAlertMessage } from "./useSnackbarAlert";
 
 //* Types
 export type SnackbarAlertProps = {
-  isOpen: boolean;
+  isOpen?: boolean;
   message?: SnackbarAlertMessage | null;
-  close: () => void;
-  closed: () => void;
+  close?: () => void;
+  closed?: () => void;
   alertProps?: MuiAlertProps;
   alertTitleProps?: AlertTitleProps;
   snackbarProps?: SnackbarProps;
@@ -148,4 +148,7 @@ SnackbarAlert.defaultProps = {
   alertTitleProps: {},
   message: null,
   snackbarProps: {},
+  isOpen: false,
+  close: () => {},
+  closed: () => {},
 };

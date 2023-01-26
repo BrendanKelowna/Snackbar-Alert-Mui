@@ -1,7 +1,9 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import SnackbarAlert from "../SnackbarAlert";
 import {
+  SnackbarAlertContextAdd,
+  SnackbarAlertContextState,
   SnackbarAlertProvider,
   useSnackbarAlertAddContext,
   useSnackbarAlertContext,
@@ -21,111 +23,110 @@ const mockMessage = (title: string): SnackbarAlertMessage => ({
 });
 
 // SnackbarAlert
-function MockSnackbarAlert() {
-  const { isOpen, message, add, close, closed } = useSnackbarAlert();
+function MockSnackbarAlertWithState({ state }: { state: SnackbarAlertState }) {
+  const newState = useSnackbarAlert();
+  Object.assign(state, newState);
 
   return (
-    <div>
-      <button type="button" onClick={() => add(mockMessage("Test Title"))}>
-        addUndo
-      </button>
-
-      <SnackbarAlert isOpen={isOpen} message={message} close={close} closed={closed} />
-    </div>
+    <SnackbarAlert
+      isOpen={newState.isOpen}
+      message={newState.message}
+      close={newState.close}
+      closed={newState.closed}
+    />
   );
 }
 
 // SnackbarAlertBase
-function MockSnackbarAlertBase() {
-  const { isOpen, message, close, closed } = useSnackbarAlertContext();
-  const add = useSnackbarAlertAddContext();
-  return (
-    <div>
-      <button type="button" onClick={() => add(mockMessage("Test Title"))}>
-        addUndo
-      </button>
+function MockSnackbarAlertWithContext({
+  services,
+  state,
+}: {
+  services: { add: SnackbarAlertContextAdd };
+  state: SnackbarAlertContextState;
+}) {
+  const newState = useSnackbarAlertContext();
+  Object.assign(state, newState);
+  const newServices = { add: useSnackbarAlertAddContext() };
+  Object.assign(services, newServices);
 
-      <SnackbarAlert isOpen={isOpen} message={message} close={close} closed={closed} />
-    </div>
+  return (
+    <SnackbarAlert
+      isOpen={newState.isOpen}
+      message={newState.message}
+      close={newState.close}
+      closed={newState.closed}
+    />
   );
 }
 
-// SnackbarAlertContext
-function MockSnackbarAlertContext() {
-  return (
-    <div>
-      <SnackbarAlertProvider>
-        <MockSnackbarAlertBase />
-      </SnackbarAlertProvider>
-    </div>
-  );
-}
+describe("Snackbar Alert tests", () => {
+  test("Initial render", () => {
+    render(<SnackbarAlert />);
 
-describe("Snackbar Tests", () => {
-  test("Initial render test", () => {
-    render(<MockSnackbarAlert />);
+    const alert = screen.queryByRole("alert", { hidden: true });
 
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(alert).toBeNull();
   });
 
-  test("Undo alert test", async () => {
-    render(<MockSnackbarAlert />);
+  describe("Snackbar Alert hook tests", () => {
+    test("Undo alert test", async () => {
+      const state = {} as SnackbarAlertState;
+      render(<MockSnackbarAlertWithState state={state} />);
 
-    const addUndo = screen.getByRole("button", { name: "addUndo" });
+      act(() => state.add(mockMessage("test")));
 
-    userEvent.click(addUndo);
+      const alert = screen.getByRole("alert", { hidden: true });
 
-    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument()
-    );
+      await waitFor(() => expect(alert).toBeVisible());
+      expect(screen.getByRole("button", { name: "Undo" })).toBeVisible();
+    });
+
+    test("Multiple alerts test", async () => {
+      const state = {} as SnackbarAlertState;
+      render(<MockSnackbarAlertWithState state={state} />);
+
+      // Add 3 alerts
+      act(() => state.add(mockMessage("test1")));
+      act(() => state.add(mockMessage("test2")));
+      act(() => state.add(mockMessage("test3")));
+
+      // Wait for first alert and close
+      await waitFor(() => expect(screen.getByText("test1")).toBeVisible());
+      await userEvent.click(screen.getByRole("button", { name: "Close" }));
+
+      // Wait for second alert and Close
+      await waitFor(() => expect(screen.getByText("test2")).toBeVisible());
+      await userEvent.click(screen.getByRole("button", { name: "Close" }));
+
+      // Wait for third alert and Close
+      await waitFor(() => expect(screen.getByText("test3")).toBeVisible());
+      await userEvent.click(screen.getByRole("button", { name: "Close" }));
+
+      // Wait for all alerts to be removed
+      await waitFor(() => expect(screen.getByRole("alert")).not.toBeVisible());
+    });
   });
 
-  test("Multiple alerts test", async () => {
-    render(<MockSnackbarAlert />);
+  describe("Page loading context tests", () => {
+    test("Context test", async () => {
+      const services = {} as { add: SnackbarAlertContextAdd };
+      const state = {} as SnackbarAlertContextState;
+      render(
+        <SnackbarAlertProvider>
+          <MockSnackbarAlertWithContext services={services} state={state} />
+        </SnackbarAlertProvider>
+      );
 
-    const addUndo = screen.getByRole("button", { name: "addUndo" });
+      let alert = screen.queryByRole("alert", { hidden: true });
 
-    // Add 3 alerts
-    userEvent.click(addUndo);
-    userEvent.click(addUndo);
-    userEvent.click(addUndo);
+      expect(alert).toBeNull();
 
-    // Wait for first alert
-    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+      act(() => services.add(mockMessage("test1")));
 
-    // Close first alert
-    userEvent.click(screen.getByRole("button", { name: "Close" }));
+      alert = screen.queryByRole("alert", { hidden: true });
 
-    // Close second alert
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument()
-    );
-    userEvent.click(screen.getByRole("button", { name: "Close" }));
-
-    // Close third alert
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument()
-    );
-    userEvent.click(screen.getByRole("button", { name: "Close" }));
-
-    // Wait for all alerts to be removed
-    await waitFor(() => expect(screen.getByRole("alert")).not.toBeVisible());
-    // await waitForElementToBeRemoved(
-    //   () => expect(screen.getByRole("alert")).not.toBeInTheDocument(),
-    //   { timeout: 5000 }
-    // );
-  });
-
-  test("Context test", async () => {
-    render(<MockSnackbarAlertContext />);
-
-    const addUndo = screen.getByRole("button", { name: "addUndo" });
-
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-
-    userEvent.click(addUndo);
-
-    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+      await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    });
   });
 });
