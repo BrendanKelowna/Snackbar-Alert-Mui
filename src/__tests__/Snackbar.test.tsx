@@ -1,7 +1,15 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import SnackbarAlert from "../SnackbarAlert";
-import useSnackbarAlert, { SnackbarAlertMessage } from "../useSnackbarAlert";
+import {
+  SnackbarAlertProvider,
+  useSnackbarAlertAddContext,
+  useSnackbarAlertContext,
+} from "../SnackbarAlertContext";
+import useSnackbarAlert, {
+  SnackbarAlertMessage,
+  SnackbarAlertState,
+} from "../useSnackbarAlert";
 
 //* Mocks
 // Messages
@@ -23,6 +31,32 @@ function MockSnackbarAlert() {
       </button>
 
       <SnackbarAlert isOpen={isOpen} message={message} close={close} closed={closed} />
+    </div>
+  );
+}
+
+// SnackbarAlertBase
+function MockSnackbarAlertBase() {
+  const { isOpen, message, close, closed } = useSnackbarAlertContext();
+  const add = useSnackbarAlertAddContext();
+  return (
+    <div>
+      <button type="button" onClick={() => add(mockMessage("Test Title"))}>
+        addUndo
+      </button>
+
+      <SnackbarAlert isOpen={isOpen} message={message} close={close} closed={closed} />
+    </div>
+  );
+}
+
+// SnackbarAlertContext
+function MockSnackbarAlertContext() {
+  return (
+    <div>
+      <SnackbarAlertProvider>
+        <MockSnackbarAlertBase />
+      </SnackbarAlertProvider>
     </div>
   );
 }
@@ -81,5 +115,17 @@ describe("Snackbar Tests", () => {
     //   () => expect(screen.getByRole("alert")).not.toBeInTheDocument(),
     //   { timeout: 5000 }
     // );
+  });
+
+  test("Context test", async () => {
+    render(<MockSnackbarAlertContext />);
+
+    const addUndo = screen.getByRole("button", { name: "addUndo" });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    userEvent.click(addUndo);
+
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
   });
 });
