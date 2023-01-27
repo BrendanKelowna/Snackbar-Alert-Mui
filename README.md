@@ -6,6 +6,7 @@ A react component, context and state to display to display alerts or messages.
 
 - React
 - Mui
+- Mui icons
 
 ## License
 
