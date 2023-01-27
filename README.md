@@ -1,6 +1,6 @@
 # Snack Bar Alert
 
-A react component and context or state to display to display alerts or messages.
+A react component, context and state to display to display alerts or messages.
 
 ## Dependencies
 
